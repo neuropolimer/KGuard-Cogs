@@ -1,0 +1,25 @@
+{
+  "author": [
+    "neuropolimer"
+  ],
+  "description": "Временные голосовые комнаты для Red-DiscordBot. Поддерживает несколько независимых генераторов, восстановление после перезапуска, передачу владельца и команды управления комнатой.",
+  "install_msg": "TempVoice установлен. Загрузите cog командой `[p]load tempvoice`. Проверьте генераторы через `[p]tempvoiceset list`.",
+  "short": "Временные голосовые комнаты с управлением владельцем.",
+  "end_user_data_statement": "Cog хранит Discord ID временных каналов, каналов-генераторов, категорий и текущих владельцев комнат. Имена пользователей и содержимое сообщений не сохраняются.",
+  "min_bot_version": "3.5.0",
+  "max_bot_version": "3.5.99",
+  "min_python_version": [
+    3,
+    11,
+    0
+  ],
+  "requirements": [],
+  "tags": [
+    "voice",
+    "temporary",
+    "utility"
+  ],
+  "hidden": false,
+  "disabled": false,
+  "type": "COG"
+}
