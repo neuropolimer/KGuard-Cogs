@@ -30,7 +30,7 @@
 
 ```text
 [p]load downloader
-[p]repo add KGuard-Cogs git@github-kguard:neuropolimer/KGuard-Cogs.git
+[p]repo add KGuard-Cogs git@github-kguard:neuropolimer/KGuard-Cogs.git main
 [p]cog install KGuard-Cogs tempvoice
 [p]load tempvoice
 ```
@@ -90,6 +90,18 @@
 
 Используйте отдельный SSH deploy key только для этого репозитория и выдайте ему read-only доступ. Не используйте GitHub PAT в команде `[p]repo add`: сообщение Discord и remote URL локального клона могут сохранить токен.
 
+Создайте ключ в терминале Pterodactyl/Monkey Network:
+
+```bash
+install -d -m 700 /home/container/.ssh
+ssh-keygen -t ed25519 -f /home/container/.ssh/kguard_cogs_ed25519 -N '' -C 'KGuard-Cogs read-only'
+ssh-keyscan -H github.com >> /home/container/.ssh/known_hosts
+chmod 600 /home/container/.ssh/kguard_cogs_ed25519 /home/container/.ssh/known_hosts
+cat /home/container/.ssh/kguard_cogs_ed25519.pub
+```
+
+Команда `cat` выводит только публичную часть ключа — её можно безопасно скопировать в GitHub. Приватный файл `kguard_cogs_ed25519` нельзя отправлять в Discord или переносить с сервера без необходимости.
+
 Пример `~/.ssh/config` на хосте Red:
 
 ```sshconfig
@@ -101,3 +113,11 @@ Host github-kguard
 ```
 
 Публичную часть ключа (`kguard_cogs_ed25519.pub`) добавьте в GitHub: **KGuard-Cogs → Settings → Deploy keys → Add deploy key**, без флажка write access. Приватная часть остаётся только на сервере Red.
+
+После добавления ключа проверьте соединение из терминала:
+
+```bash
+ssh -T git@github-kguard
+```
+
+Ответ GitHub об успешной аутентификации и отсутствии shell-доступа является нормальным. После этого выполните команды Downloader из раздела «Установка».
