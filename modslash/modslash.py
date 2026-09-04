@@ -148,7 +148,7 @@ class ModSlash(commands.Cog):
             interaction, self._line("warn", member.id, points, reason)
         )
 
-    @app_commands.command(name="warn", description="Warn a member using Red Warnings.")
+    @app_commands.command(name="warn", description="Warn a member using Red Warnings.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member to warn", reason="Reason", points="Warning points")
     @app_commands.guild_only()
     async def warn(
@@ -160,7 +160,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_warn(interaction, member, reason, points)
 
-    @app_commands.command(name="варн", description="Выдать предупреждение через Red Warnings.")
+    @app_commands.command(name="варн", description="Выдать предупреждение через Red Warnings.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", reason="причина", points="баллы")
     @app_commands.describe(member="Кому выдать предупреждение", reason="Причина", points="Баллы")
     @app_commands.guild_only()
@@ -173,7 +173,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_warn(interaction, member, reason, points)
 
-    @app_commands.command(name="пред", description="Псевдоним /варн.")
+    @app_commands.command(name="пред", description="Псевдоним /варн.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", reason="причина", points="баллы")
     @app_commands.guild_only()
     async def warn_pred(
@@ -190,7 +190,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("warnings", member.id))
 
-    @app_commands.command(name="warnings", description="Show a member's Red warnings.")
+    @app_commands.command(name="warnings", description="Show a member's Red warnings.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member whose warnings to show")
     @app_commands.guild_only()
     async def warnings(
@@ -198,7 +198,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_warnings(interaction, member)
 
-    @app_commands.command(name="warns", description="Alias for /warnings.")
+    @app_commands.command(name="warns", description="Alias for /warnings.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member whose warnings to show")
     @app_commands.guild_only()
     async def warns(
@@ -206,7 +206,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_warnings(interaction, member)
 
-    @app_commands.command(name="варны", description="Показать предупреждения участника.")
+    @app_commands.command(name="варны", description="Показать предупреждения участника.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник")
     @app_commands.guild_only()
     async def warnings_ru(
@@ -214,7 +214,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_warnings(interaction, member)
 
-    @app_commands.command(name="преды", description="Псевдоним /варны.")
+    @app_commands.command(name="преды", description="Псевдоним /варны.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник")
     @app_commands.guild_only()
     async def warnings_pred(
@@ -222,7 +222,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_warnings(interaction, member)
 
-    @app_commands.command(name="unwarn", description="Remove a Red warning from a member.")
+    @app_commands.command(name="unwarn", description="Remove a Red warning from a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", warn_id="Warning ID", reason="Reason")
     @app_commands.guild_only()
     async def unwarn(
@@ -250,7 +250,7 @@ class ModSlash(commands.Cog):
             interaction, self._line(command, member.id, duration, reason)
         )
 
-    @app_commands.command(name="mute", description="Mute a member using the Red Mutes cog.")
+    @app_commands.command(name="mute", description="Mute a member using the Red Mutes cog.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", duration="Any Red duration, e.g. 30s, 5m, 2h, 3d", reason="Reason")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -263,7 +263,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_timed_member_command(interaction, "mute", member, duration, reason)
 
-    @app_commands.command(name="мут", description="Выдать мут через Red Mutes.")
+    @app_commands.command(name="мут", description="Выдать мут через Red Mutes.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", duration="срок", reason="причина")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -276,7 +276,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_timed_member_command(interaction, "mute", member, duration, reason)
 
-    @app_commands.command(name="unmute", description="Unmute a member using Red Mutes.")
+    @app_commands.command(name="unmute", description="Unmute a member using Red Mutes.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def unmute(
@@ -287,7 +287,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("unmute", member.id, reason))
 
-    @app_commands.command(name="размут", description="Снять мут через Red Mutes.")
+    @app_commands.command(name="размут", description="Снять мут через Red Mutes.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", reason="причина")
     @app_commands.guild_only()
     async def unmute_ru(
@@ -298,7 +298,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("unmute", member.id, reason))
 
-    @app_commands.command(name="timeout", description="Timeout a member using Red Mutes.")
+    @app_commands.command(name="timeout", description="Timeout a member using Red Mutes.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", duration="Any Red duration", reason="Reason")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -311,7 +311,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_timed_member_command(interaction, "timeout", member, duration, reason)
 
-    @app_commands.command(name="таймаут", description="Выдать timeout через Red Mutes.")
+    @app_commands.command(name="таймаут", description="Выдать timeout через Red Mutes.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", duration="срок", reason="причина")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -324,12 +324,12 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_timed_member_command(interaction, "timeout", member, duration, reason)
 
-    @app_commands.command(name="activemutes", description="Show active Red mutes.")
+    @app_commands.command(name="activemutes", description="Show active Red mutes.", extras={"red_force_enable": True})
     @app_commands.guild_only()
     async def activemutes(self, interaction: discord.Interaction) -> None:
         await self._run_legacy(interaction, "activemutes")
 
-    @app_commands.command(name="mutechannel", description="Mute a member in the current channel.")
+    @app_commands.command(name="mutechannel", description="Mute a member in the current channel.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", duration="Any Red duration", reason="Reason")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -342,7 +342,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_timed_member_command(interaction, "mutechannel", member, duration, reason)
 
-    @app_commands.command(name="unmutechannel", description="Unmute a member in the current channel.")
+    @app_commands.command(name="unmutechannel", description="Unmute a member in the current channel.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def unmutechannel(
@@ -353,7 +353,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("unmutechannel", member.id, reason))
 
-    @app_commands.command(name="voicemute", description="Voice-mute a member using Red Mutes.")
+    @app_commands.command(name="voicemute", description="Voice-mute a member using Red Mutes.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", duration="Any Red duration", reason="Reason")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -366,7 +366,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_timed_member_command(interaction, "voicemute", member, duration, reason)
 
-    @app_commands.command(name="voiceunmute", description="Remove a Red voice mute from a member.")
+    @app_commands.command(name="voiceunmute", description="Remove a Red voice mute from a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def voiceunmute(
@@ -390,7 +390,7 @@ class ModSlash(commands.Cog):
             interaction, self._line("ban", user.id, delete_days, reason)
         )
 
-    @app_commands.command(name="ban", description="Ban a user using the Red Mod cog.")
+    @app_commands.command(name="ban", description="Ban a user using the Red Mod cog.", extras={"red_force_enable": True})
     @app_commands.describe(user="User to ban", delete_days="Days of messages to delete (0-7)", reason="Reason")
     @app_commands.guild_only()
     async def ban(
@@ -402,7 +402,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_ban(interaction, user, delete_days, reason)
 
-    @app_commands.command(name="бан", description="Забанить пользователя через Red Mod.")
+    @app_commands.command(name="бан", description="Забанить пользователя через Red Mod.", extras={"red_force_enable": True})
     @app_commands.rename(user="пользователь", delete_days="удалить_дни", reason="причина")
     @app_commands.guild_only()
     async def ban_ru(
@@ -414,7 +414,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_ban(interaction, user, delete_days, reason)
 
-    @app_commands.command(name="kick", description="Kick a member using the Red Mod cog.")
+    @app_commands.command(name="kick", description="Kick a member using the Red Mod cog.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def kick(
@@ -425,7 +425,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("kick", member.id, reason))
 
-    @app_commands.command(name="кик", description="Кикнуть участника через Red Mod.")
+    @app_commands.command(name="кик", description="Кикнуть участника через Red Mod.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", reason="причина")
     @app_commands.guild_only()
     async def kick_ru(
@@ -436,7 +436,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("kick", member.id, reason))
 
-    @app_commands.command(name="massban", description="Mass-ban user IDs using the Red Mod cog.")
+    @app_commands.command(name="massban", description="Mass-ban user IDs using the Red Mod cog.", extras={"red_force_enable": True})
     @app_commands.describe(user_ids="Space-separated Discord user IDs", delete_days="Days of messages to delete (0-7)", reason="Reason")
     @app_commands.guild_only()
     async def massban(
@@ -450,7 +450,7 @@ class ModSlash(commands.Cog):
             interaction, self._line("massban", user_ids, delete_days, reason)
         )
 
-    @app_commands.command(name="softban", description="Soft-ban a member using the Red Mod cog.")
+    @app_commands.command(name="softban", description="Soft-ban a member using the Red Mod cog.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def softban(
@@ -461,7 +461,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("softban", member.id, reason))
 
-    @app_commands.command(name="софтбан", description="Софтбан через Red Mod.")
+    @app_commands.command(name="софтбан", description="Софтбан через Red Mod.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", reason="причина")
     @app_commands.guild_only()
     async def softban_ru(
@@ -485,7 +485,7 @@ class ModSlash(commands.Cog):
             self._line("tempban", member.id, duration, delete_days, reason),
         )
 
-    @app_commands.command(name="tempban", description="Temporarily ban a member using Red Mod.")
+    @app_commands.command(name="tempban", description="Temporarily ban a member using Red Mod.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", duration="Any Red duration", delete_days="Days of messages to delete (0-7)", reason="Reason")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -499,7 +499,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_tempban(interaction, member, duration, delete_days, reason)
 
-    @app_commands.command(name="тбан", description="Временный бан через Red Mod.")
+    @app_commands.command(name="тбан", description="Временный бан через Red Mod.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", duration="срок", delete_days="удалить_дни", reason="причина")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -513,7 +513,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_tempban(interaction, member, duration, delete_days, reason)
 
-    @app_commands.command(name="unban", description="Unban a user using the Red Mod cog.")
+    @app_commands.command(name="unban", description="Unban a user using the Red Mod cog.", extras={"red_force_enable": True})
     @app_commands.describe(user="User ID or exact Discord name", reason="Reason")
     @app_commands.guild_only()
     async def unban(
@@ -524,7 +524,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("unban", user, reason))
 
-    @app_commands.command(name="разбан", description="Разбанить пользователя через Red Mod.")
+    @app_commands.command(name="разбан", description="Разбанить пользователя через Red Mod.", extras={"red_force_enable": True})
     @app_commands.rename(user="пользователь", reason="причина")
     @app_commands.guild_only()
     async def unban_ru(
@@ -535,7 +535,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("unban", user, reason))
 
-    @app_commands.command(name="names", description="Show a member's stored previous names.")
+    @app_commands.command(name="names", description="Show a member's stored previous names.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member")
     @app_commands.guild_only()
     async def names(
@@ -543,7 +543,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("names", member.id))
 
-    @app_commands.command(name="rename", description="Change or clear a member's nickname.")
+    @app_commands.command(name="rename", description="Change or clear a member's nickname.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", nickname="New nickname; leave empty to clear")
     @app_commands.guild_only()
     async def rename(
@@ -554,7 +554,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("rename", member.id, nickname))
 
-    @app_commands.command(name="slowmode", description="Set slowmode in the current channel/thread.")
+    @app_commands.command(name="slowmode", description="Set slowmode in the current channel/thread.", extras={"red_force_enable": True})
     @app_commands.describe(duration="Any Red interval; leave empty to disable")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -565,7 +565,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("slowmode", duration))
 
-    @app_commands.command(name="userinfo", description="Show Red user information.")
+    @app_commands.command(name="userinfo", description="Show Red user information.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member; leave empty for yourself")
     @app_commands.guild_only()
     async def userinfo(
@@ -577,7 +577,7 @@ class ModSlash(commands.Cog):
             interaction, self._line("userinfo", member.id if member else None)
         )
 
-    @app_commands.command(name="voiceban", description="Voice-ban a member using Red Mod.")
+    @app_commands.command(name="voiceban", description="Voice-ban a member using Red Mod.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def voiceban(
@@ -588,7 +588,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("voiceban", member.id, reason))
 
-    @app_commands.command(name="voicekick", description="Disconnect a member from voice using Red Mod.")
+    @app_commands.command(name="voicekick", description="Disconnect a member from voice using Red Mod.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def voicekick(
@@ -599,7 +599,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("voicekick", member.id, reason))
 
-    @app_commands.command(name="voiceunban", description="Remove a Red voice ban from a member.")
+    @app_commands.command(name="voiceunban", description="Remove a Red voice ban from a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
     async def voiceunban(
@@ -615,13 +615,13 @@ class ModSlash(commands.Cog):
     async def _do_case(self, interaction: discord.Interaction, number: int) -> None:
         await self._run_legacy(interaction, self._line("case", number))
 
-    @app_commands.command(name="case", description="Show a Red ModLog case.")
+    @app_commands.command(name="case", description="Show a Red ModLog case.", extras={"red_force_enable": True})
     @app_commands.describe(number="Case number")
     @app_commands.guild_only()
     async def case(self, interaction: discord.Interaction, number: int) -> None:
         await self._do_case(interaction, number)
 
-    @app_commands.command(name="кейс", description="Показать кейс Red ModLog.")
+    @app_commands.command(name="кейс", description="Показать кейс Red ModLog.", extras={"red_force_enable": True})
     @app_commands.rename(number="номер")
     @app_commands.guild_only()
     async def case_ru(self, interaction: discord.Interaction, number: int) -> None:
@@ -632,7 +632,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("casesfor", member.id))
 
-    @app_commands.command(name="casesfor", description="Show ModLog cases for a member.")
+    @app_commands.command(name="casesfor", description="Show ModLog cases for a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member")
     @app_commands.guild_only()
     async def casesfor(
@@ -640,7 +640,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_casesfor(interaction, member)
 
-    @app_commands.command(name="cases", description="Alias for /casesfor.")
+    @app_commands.command(name="cases", description="Alias for /casesfor.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member")
     @app_commands.guild_only()
     async def cases_alias(
@@ -648,7 +648,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_casesfor(interaction, member)
 
-    @app_commands.command(name="кейсы", description="Показать кейсы участника.")
+    @app_commands.command(name="кейсы", description="Показать кейсы участника.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник")
     @app_commands.guild_only()
     async def cases_ru(
@@ -656,7 +656,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_casesfor(interaction, member)
 
-    @app_commands.command(name="listcases", description="List ModLog cases for a member.")
+    @app_commands.command(name="listcases", description="List ModLog cases for a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member")
     @app_commands.guild_only()
     async def listcases(
@@ -664,7 +664,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("listcases", member.id))
 
-    @app_commands.command(name="reason", description="Change the reason on a Red ModLog case.")
+    @app_commands.command(name="reason", description="Change the reason on a Red ModLog case.", extras={"red_force_enable": True})
     @app_commands.describe(reason="New reason", case="Case number; omit for latest")
     @app_commands.guild_only()
     async def reason(
@@ -682,7 +682,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("report", text))
 
-    @app_commands.command(name="report", description="Send a report using Red Reports.")
+    @app_commands.command(name="report", description="Send a report using Red Reports.", extras={"red_force_enable": True})
     @app_commands.describe(text="Report text; leave empty for Red's interactive mode")
     @app_commands.guild_only()
     async def report(
@@ -692,7 +692,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_report(interaction, text)
 
-    @app_commands.command(name="репорт", description="Отправить репорт через Red Reports.")
+    @app_commands.command(name="репорт", description="Отправить репорт через Red Reports.", extras={"red_force_enable": True})
     @app_commands.rename(text="текст")
     @app_commands.guild_only()
     async def report_ru(
@@ -702,7 +702,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_report(interaction, text)
 
-    @app_commands.command(name="report-interact", description="Open a Red report message tunnel.")
+    @app_commands.command(name="report-interact", description="Open a Red report message tunnel.", extras={"red_force_enable": True})
     @app_commands.describe(ticket="Report ticket number")
     @app_commands.guild_only()
     async def report_interact(
