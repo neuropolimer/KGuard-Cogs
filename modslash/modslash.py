@@ -58,7 +58,7 @@ async def duration_autocomplete(
 class ModSlash(commands.Cog):
     """Slash interface for the moderation commands already configured in Red."""
 
-    __version__ = "1.0.1"
+    __version__ = "1.0.2"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -104,7 +104,11 @@ class ModSlash(commands.Cog):
         fake_message.content = f"{prefixes[0]}{command_line}"
 
         legacy_ctx = await self.bot.get_context(fake_message)
-        legacy_ctx.interaction = interaction
+
+        # Do not attach the slash interaction to the synthetic prefix context.
+        # Red's Context.send() would then route through interaction.followup,
+        # which is unnecessary here and can hit Discord/Cloudflare webhook limits.
+        legacy_ctx.interaction = None
 
         if legacy_ctx.command is None:
             original = command_line.split(maxsplit=1)[0]
