@@ -5,29 +5,28 @@
 Сейчас в репозитории:
 
 - `tempvoice` — временные голосовые каналы;
-- `modslash` — удобный slash-интерфейс поверх уже настроенной модерации Red.
+- `modslash` — slash-интерфейс поверх уже настроенной модерации Red.
 
 ## ModSlash
 
-`modslash` не создаёт отдельную систему наказаний. Slash-команда преобразуется в вызов соответствующей обычной команды Red, поэтому сохраняются существующие:
+`modslash` не создаёт отдельную систему наказаний. Slash-команда передаётся соответствующей обычной команде Red, поэтому сохраняются:
 
-- права и правила из Permissions;
+- правила из Permissions;
 - проверки ролей и иерархии;
-- Warnings;
-- Mutes;
-- ModLog и номера cases;
+- Warnings и Mutes;
+- ModLog и номера case'ов;
 - настройки Mod, Mutes, Warnings и Reports.
 
-Если исходная Red-команда запрещена конкретному модератору, её slash-версия тоже не выполнится.
+Если исходная Red-команда запрещена модератору, slash-версия тоже не выполнится.
 
 ### Команды
 
 Основные slash-команды:
 
-- Warnings: `/warn`, `/warnings`, `/warns`, `/unwarn`;
+- Warnings: `/warn`, `/warnings`, `/warns`, `/unwarn`, `/warningsid`, `/unwarnid`;
 - Mutes: `/mute`, `/unmute`, `/timeout`, `/activemutes`, `/mutechannel`, `/unmutechannel`, `/voicemute`, `/voiceunmute`;
-- Mod: `/ban`, `/unban`, `/tempban`, `/kick`, `/massban`, `/softban`, `/voiceban`, `/voicekick`, `/voiceunban`, `/rename`, `/names`, `/userinfo`, `/slowmode`;
-- ModLog: `/case`, `/casesfor`, `/cases`, `/listcases`, `/reason`;
+- Mod: `/ban`, `/banid`, `/unban`, `/tempban`, `/tempbanid`, `/kick`, `/massban`, `/softban`, `/voiceban`, `/voicekick`, `/voiceunban`, `/rename`, `/names`, `/userinfo`, `/slowmode`;
+- ModLog: `/case`, `/casesfor`, `/cases`, `/casesid`, `/listcases`, `/listcasesid`, `/reason`;
 - Reports: `/report`, `/report-interact`.
 
 Русские псевдонимы для часто используемых команд:
@@ -36,13 +35,15 @@
 
 `cleanup`, `clear` и `purge` намеренно не добавлены.
 
+Команды с суффиксом `id` нужны для случаев, когда пользователя уже нельзя выбрать через Discord-пикер — например, он вышел с сервера.
+
 ### Срок наказания
 
-Поля `duration` / `срок` не ограничены фиксированным списком. Можно вводить значения, которые понимает Red, например:
+Поля `duration` / `срок` свободные. Можно вводить значения, которые понимает Red, например:
 
 `1s`, `30s`, `1m`, `15m`, `1h`, `12h`, `1d`, `3d`, `1 week`.
 
-Discord дополнительно показывает autocomplete с частыми вариантами, но можно вписать свой срок вручную.
+Discord показывает autocomplete с частыми вариантами, но ввод не ограничен списком. Если срок `tempban` не указан, используется текущий default Red.
 
 ### Установка ModSlash
 
@@ -50,10 +51,9 @@ Discord дополнительно показывает autocomplete с част
 
 ```text
 [p]load downloader
-[p]repo update KGuard-Cogs
+[p]repo update
 [p]cog install KGuard-Cogs modslash
 [p]load modslash
-[p]slash enablecog ModSlash
 [p]slash sync
 ```
 
@@ -64,11 +64,12 @@ Discord дополнительно показывает autocomplete с част
 [p]repo add KGuard-Cogs https://github.com/neuropolimer/KGuard-Cogs
 [p]cog install KGuard-Cogs modslash
 [p]load modslash
-[p]slash enablecog ModSlash
 [p]slash sync
 ```
 
-После обновлений:
+Application-команды `modslash` помечены как обязательные самим cog, поэтому `slash enablecog` не требуется.
+
+После обновления `modslash`:
 
 ```text
 [p]cog update modslash
@@ -78,9 +79,11 @@ Discord дополнительно показывает autocomplete с част
 
 ## TempVoice
 
-Пользователь заходит в канал-генератор, cog создаёт для него временный голосовой канал и переносит туда. Когда канал пустеет, он удаляется.
+Пользователь заходит в канал-генератор, cog создаёт временный голосовой канал и переносит туда. Когда в комнате не остаётся обычных пользователей, канал удаляется.
 
-Поддерживаются несколько генераторов, собственные шаблоны имён, восстановление после перезапуска Red и передача владельца другому участнику. Владелец временного канала может менять название и лимит, закрывать или скрывать канал, разрешать доступ отдельным людям и отключать участников.
+Поддерживаются несколько генераторов, шаблоны имён, восстановление после перезапуска и передача владельца. Владелец может менять название и лимит, закрывать/скрывать комнату, разрешать доступ и отключать участников.
+
+Владелец всегда получает явные `View Channel` + `Connect`, поэтому после `lock` или `hide` он не запирает самого себя. При передаче владельца этот доступ переносится новому владельцу.
 
 ### Установка TempVoice
 
@@ -91,7 +94,7 @@ Discord дополнительно показывает autocomplete с част
 [p]load tempvoice
 ```
 
-Проверить текущую настройку:
+Проверить настройку:
 
 ```text
 [p]tempvoiceset list
@@ -105,7 +108,7 @@ Discord дополнительно показывает autocomplete с част
 [p]tempvoiceset template <creator_channel> <template>
 ```
 
-В шаблоне должен быть `{nick}`. Каналы и категории можно передавать упоминанием или ID.
+В шаблоне должен быть `{nick}`.
 
 ### Команды временного канала
 
