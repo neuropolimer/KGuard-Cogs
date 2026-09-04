@@ -28,7 +28,7 @@ class TempVoice(commands.Cog):
     """Временные голосовые комнаты с управлением владельцем."""
 
     __author__ = "neuropolimer"
-    __version__ = "1.0.0"
+    __version__ = "1.1.0"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -160,20 +160,89 @@ class TempVoice(commands.Cog):
             None,
         )
 
+    async def _set_owner_channel_access(
+        self,
+        channel: discord.VoiceChannel,
+        member: discord.Member,
+        *,
+        enabled: bool,
+    ) -> None:
+        """Grant/revoke the explicit owner access managed by TempVoice.
+
+        Owners must keep View Channel + Connect even when they lock or hide the
+        room from @everyone. When ownership moves, these two owner-specific
+        overrides are moved with it while unrelated member overrides are kept.
+        """
+        me = channel.guild.me
+        if me is None or not channel.permissions_for(me).manage_channels:
+            log.warning(
+                "Cannot update TempVoice owner overwrite in channel %s: missing Manage Channels",
+                channel.id,
+            )
+            return
+
+        overwrite = channel.overwrites_for(member)
+        target = True if enabled else None
+        if overwrite.view_channel is target and overwrite.connect is target:
+            return
+
+        overwrite.view_channel = target
+        overwrite.connect = target
+        try:
+            await channel.set_permissions(
+                member,
+                overwrite=None if overwrite.is_empty() else overwrite,
+                reason=(
+                    "TempVoice: grant owner room access"
+                    if enabled
+                    else "TempVoice: remove previous owner room access"
+                ),
+            )
+        except discord.Forbidden:
+            log.warning(
+                "Discord denied owner overwrite update for channel %s and member %s",
+                channel.id,
+                member.id,
+            )
+        except discord.HTTPException:
+            log.exception(
+                "Discord API failed owner overwrite update for channel %s and member %s",
+                channel.id,
+                member.id,
+            )
+
+    async def _move_owner_channel_access(
+        self,
+        channel: discord.VoiceChannel,
+        old_owner_id: int,
+        new_owner: Optional[discord.Member],
+    ) -> None:
+        old_owner = channel.guild.get_member(old_owner_id) if old_owner_id else None
+        if old_owner is not None and (new_owner is None or old_owner.id != new_owner.id):
+            await self._set_owner_channel_access(channel, old_owner, enabled=False)
+        if new_owner is not None:
+            await self._set_owner_channel_access(channel, new_owner, enabled=True)
+
     async def _reconcile_room(self, channel: discord.VoiceChannel) -> None:
-        """Удалить пустую tracked-комнату или восстановить/передать владельца."""
+        """Удалить комнату без людей или восстановить/передать владельца."""
         async with self._channel_locks[channel.id]:
             room = self._rooms[channel.guild.id].get(channel.id)
             if room is None:
                 return
 
-            if not channel.members:
-                await self._delete_tracked_room(channel, reason="Временный канал опустел")
+            human_members = [member for member in channel.members if not member.bot]
+            if not human_members:
+                await self._delete_tracked_room(
+                    channel, reason="Во временной комнате не осталось пользователей"
+                )
                 return
 
             owner_id = int(room.get("owner_id", 0))
-            owner_is_present = any(member.id == owner_id for member in channel.members)
-            if owner_is_present:
+            owner = next((member for member in human_members if member.id == owner_id), None)
+            if owner is not None:
+                # Also migrates rooms created by older TempVoice versions where
+                # the owner did not yet have an explicit View/Connect allow.
+                await self._set_owner_channel_access(channel, owner, enabled=True)
                 return
 
             new_owner = self._next_owner(channel)
@@ -182,8 +251,11 @@ class TempVoice(commands.Cog):
                 current = self._rooms[channel.guild.id].get(channel.id)
                 if current is None:
                     return
+                old_owner_id = int(current.get("owner_id", 0))
                 current["owner_id"] = new_owner_id
                 await self._save_rooms_locked(channel.guild.id)
+
+            await self._move_owner_channel_access(channel, old_owner_id, new_owner)
 
     async def _delete_tracked_room(self, channel: discord.VoiceChannel, *, reason: str) -> None:
         """Удалить канал только если его ID всё ещё находится в реестре TempVoice."""
@@ -291,10 +363,15 @@ class TempVoice(commands.Cog):
 
                     try:
                         name = self._render_room_name(str(settings["template"]), member)
+                        overwrites = dict(category.overwrites)
+                        owner_overwrite = overwrites.get(member, discord.PermissionOverwrite())
+                        owner_overwrite.view_channel = True
+                        owner_overwrite.connect = True
+                        overwrites[member] = owner_overwrite
                         target = await guild.create_voice_channel(
                             name,
                             category=category,
-                            overwrites=category.overwrites,
+                            overwrites=overwrites,
                             reason=f"TempVoice: комнату создал {member} ({member.id})",
                         )
                     except ValueError:
@@ -404,6 +481,15 @@ class TempVoice(commands.Cog):
                     if isinstance(channel, discord.VoiceChannel):
                         replacement = self._next_owner(channel, excluded_id=user_id)
                         room["owner_id"] = replacement.id if replacement is not None else 0
+                        old_owner = channel.guild.get_member(user_id)
+                        if old_owner is not None:
+                            await self._set_owner_channel_access(
+                                channel, old_owner, enabled=False
+                            )
+                        if replacement is not None:
+                            await self._set_owner_channel_access(
+                                channel, replacement, enabled=True
+                            )
                     else:
                         room["owner_id"] = 0
                     changed = True
