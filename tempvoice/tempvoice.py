@@ -129,9 +129,9 @@ class TempVoice(commands.Cog):
             if changed:
                 await self._save_generators_locked(guild.id)
 
-            # Если один из объектов временно отсутствует, повторим проверку после следующего запуска.
-            if len(matches) == len(DEFAULT_GENERATORS):
-                await guild_config.defaults_seeded.set(True)
+            # Bootstrap defaults only once. If an administrator later removes one
+            # of these generators manually, it must not reappear after every restart.
+            await guild_config.defaults_seeded.set(True)
 
     async def _restore_guild_rooms(self, guild: discord.Guild) -> None:
         for channel_id in list(self._rooms[guild.id]):
