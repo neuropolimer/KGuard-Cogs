@@ -58,7 +58,7 @@ async def duration_autocomplete(
 class ModSlash(commands.Cog):
     """Slash interface for the moderation commands already configured in Red."""
 
-    __version__ = "1.0.2"
+    __version__ = "1.0.3"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -79,20 +79,21 @@ class ModSlash(commands.Cog):
         interaction: discord.Interaction, message: str, *, ephemeral: bool = True
     ) -> None:
         if interaction.response.is_done():
-            await interaction.followup.send(message, ephemeral=ephemeral)
-        else:
-            await interaction.response.send_message(message, ephemeral=ephemeral)
+            if interaction.channel is not None:
+                await interaction.channel.send(message)
+            return
+        await interaction.response.send_message(message, ephemeral=ephemeral)
 
     async def _run_legacy(self, interaction: discord.Interaction, command_line: str) -> None:
         if interaction.guild is None or interaction.channel is None:
             await self._respond(interaction, "Эта команда работает только на сервере.")
             return
 
-        # Discord invalidates an interaction if it is not acknowledged quickly enough.
-        # Core Red commands may take longer than that, so acknowledge immediately
-        # and send any wrapper response through a follow-up afterwards.
+        # Acknowledge immediately so Discord does not expire the interaction.
+        # We intentionally avoid follow-up webhooks afterwards: wrapped Red commands
+        # answer as normal channel messages, which is more reliable on some hosts.
         if not interaction.response.is_done():
-            await interaction.response.defer(ephemeral=True)
+            await interaction.response.send_message("Команда передана Red.", ephemeral=True)
 
         app_ctx = await commands.Context.from_interaction(interaction)
         prefixes = await self.bot.get_valid_prefixes(interaction.guild)
@@ -136,14 +137,10 @@ class ModSlash(commands.Cog):
 
         await self.bot.invoke(legacy_ctx)
 
-        if not interaction.response.is_done():
-            if legacy_ctx.command_failed:
-                await self._respond(
-                    interaction,
-                    "Red не смог выполнить команду. Проверь аргументы или права.",
-                )
-            else:
-                await self._respond(interaction, "Готово.")
+        if legacy_ctx.command_failed and interaction.channel is not None:
+            await interaction.channel.send(
+                "Red не смог выполнить команду. Проверь аргументы или права."
+            )
 
     # ---------- Warnings ----------
 
