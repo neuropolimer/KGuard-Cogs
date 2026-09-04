@@ -104,7 +104,7 @@ class ModSlash(commands.Cog):
             original = command_line.split(maxsplit=1)[0]
             await self._respond(
                 interaction,
-                f"Исходная команда \`{original}\` сейчас недоступна. Проверь, что нужный cog загружен.",
+                f"Исходная команда `{original}` сейчас недоступна. Проверь, что нужный cog загружен.",
             )
             return
 
