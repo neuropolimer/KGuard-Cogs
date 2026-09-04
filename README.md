@@ -49,6 +49,8 @@ Discord дополнительно показывает autocomplete с част
 Если репозиторий KGuard-Cogs уже подключён:
 
 ```text
+[p]load downloader
+[p]repo update KGuard-Cogs
 [p]cog install KGuard-Cogs modslash
 [p]load modslash
 [p]slash enablecog ModSlash
