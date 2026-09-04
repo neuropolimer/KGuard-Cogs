@@ -83,6 +83,15 @@ class ModSlash(commands.Cog):
         data = await config.guild(guild).all()
         return int(data.get("default_days", 0)), int(data.get("default_tempban_duration", 86400))
 
+    async def _validated_user_id(
+        self, interaction: discord.Interaction, raw: str
+    ) -> Optional[str]:
+        value = raw.strip()
+        if not value.isdigit() or not 15 <= len(value) <= 22:
+            await self._respond(interaction, "Укажи корректный Discord user ID.")
+            return None
+        return value
+
     @staticmethod
     async def _respond(
         interaction: discord.Interaction, message: str, *, ephemeral: bool = True
@@ -233,6 +242,17 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_warnings(interaction, member)
 
+    @app_commands.command(name="warningsid", description="Show Red warnings for a user by Discord ID.", extras={"red_force_enable": True})
+    @app_commands.describe(user_id="Discord user ID")
+    @app_commands.guild_only()
+    async def warningsid(
+        self, interaction: discord.Interaction, user_id: str
+    ) -> None:
+        user_id = await self._validated_user_id(interaction, user_id)
+        if user_id is None:
+            return
+        await self._run_legacy(interaction, self._line("warnings", user_id))
+
     @app_commands.command(name="unwarn", description="Remove a Red warning from a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", warn_id="Warning ID", reason="Reason")
     @app_commands.guild_only()
@@ -245,6 +265,23 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(
             interaction, self._line("unwarn", member.id, warn_id, reason)
+        )
+
+    @app_commands.command(name="unwarnid", description="Remove a Red warning by user ID and warning ID.", extras={"red_force_enable": True})
+    @app_commands.describe(user_id="Discord user ID", warn_id="Warning ID", reason="Reason")
+    @app_commands.guild_only()
+    async def unwarnid(
+        self,
+        interaction: discord.Interaction,
+        user_id: str,
+        warn_id: str,
+        reason: Optional[str] = None,
+    ) -> None:
+        user_id = await self._validated_user_id(interaction, user_id)
+        if user_id is None:
+            return
+        await self._run_legacy(
+            interaction, self._line("unwarn", user_id, warn_id, reason)
         )
 
     # ---------- Mutes ----------
@@ -430,6 +467,25 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_ban(interaction, user, delete_days, reason)
 
+    @app_commands.command(name="banid", description="Ban a user by Discord ID, including users outside the server.", extras={"red_force_enable": True})
+    @app_commands.describe(user_id="Discord user ID", delete_days="Days of messages to delete (0-7)", reason="Reason")
+    @app_commands.guild_only()
+    async def banid(
+        self,
+        interaction: discord.Interaction,
+        user_id: str,
+        delete_days: Optional[app_commands.Range[int, 0, 7]] = None,
+        reason: Optional[str] = None,
+    ) -> None:
+        user_id = await self._validated_user_id(interaction, user_id)
+        if user_id is None or interaction.guild is None:
+            return
+        if delete_days is None:
+            delete_days, _ = await self._mod_defaults(interaction.guild)
+        await self._run_legacy(
+            interaction, self._line("ban", user_id, delete_days, reason)
+        )
+
     @app_commands.command(name="kick", description="Kick a member using the Red Mod cog.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member", reason="Reason")
     @app_commands.guild_only()
@@ -541,6 +597,30 @@ class ModSlash(commands.Cog):
         reason: Optional[str] = None,
     ) -> None:
         await self._do_tempban(interaction, member, duration, delete_days, reason)
+
+    @app_commands.command(name="tempbanid", description="Temporarily ban a user by Discord ID.", extras={"red_force_enable": True})
+    @app_commands.describe(user_id="Discord user ID", duration="Any Red duration; omit for the configured default", delete_days="Days of messages to delete (0-7)", reason="Reason")
+    @app_commands.autocomplete(duration=duration_autocomplete)
+    @app_commands.guild_only()
+    async def tempbanid(
+        self,
+        interaction: discord.Interaction,
+        user_id: str,
+        duration: Optional[str] = None,
+        delete_days: Optional[app_commands.Range[int, 0, 7]] = None,
+        reason: Optional[str] = None,
+    ) -> None:
+        user_id = await self._validated_user_id(interaction, user_id)
+        if user_id is None or interaction.guild is None:
+            return
+        default_days, default_duration = await self._mod_defaults(interaction.guild)
+        if duration is None:
+            duration = f"{default_duration}s"
+        if delete_days is None:
+            delete_days = default_days
+        await self._run_legacy(
+            interaction, self._line("tempban", user_id, duration, delete_days, reason)
+        )
 
     @app_commands.command(name="unban", description="Unban a user using the Red Mod cog.", extras={"red_force_enable": True})
     @app_commands.describe(user="Discord user ID", reason="Reason")
@@ -685,6 +765,17 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_casesfor(interaction, member)
 
+    @app_commands.command(name="casesid", description="Show ModLog cases for a user by Discord ID.", extras={"red_force_enable": True})
+    @app_commands.describe(user_id="Discord user ID")
+    @app_commands.guild_only()
+    async def casesid(
+        self, interaction: discord.Interaction, user_id: str
+    ) -> None:
+        user_id = await self._validated_user_id(interaction, user_id)
+        if user_id is None:
+            return
+        await self._run_legacy(interaction, self._line("casesfor", user_id))
+
     @app_commands.command(name="listcases", description="List ModLog cases for a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member")
     @app_commands.guild_only()
@@ -692,6 +783,17 @@ class ModSlash(commands.Cog):
         self, interaction: discord.Interaction, member: discord.Member
     ) -> None:
         await self._run_legacy(interaction, self._line("listcases", member.id))
+
+    @app_commands.command(name="listcasesid", description="List ModLog cases for a user by Discord ID.", extras={"red_force_enable": True})
+    @app_commands.describe(user_id="Discord user ID")
+    @app_commands.guild_only()
+    async def listcasesid(
+        self, interaction: discord.Interaction, user_id: str
+    ) -> None:
+        user_id = await self._validated_user_id(interaction, user_id)
+        if user_id is None:
+            return
+        await self._run_legacy(interaction, self._line("listcases", user_id))
 
     @app_commands.command(name="reason", description="Change the reason on a Red ModLog case.", extras={"red_force_enable": True})
     @app_commands.describe(reason="New reason", case="Case number; omit for latest")
