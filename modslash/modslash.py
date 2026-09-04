@@ -58,7 +58,7 @@ async def duration_autocomplete(
 class ModSlash(commands.Cog):
     """Slash interface for the moderation commands already configured in Red."""
 
-    __version__ = "1.0.0"
+    __version__ = "1.0.1"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -87,6 +87,12 @@ class ModSlash(commands.Cog):
         if interaction.guild is None or interaction.channel is None:
             await self._respond(interaction, "Эта команда работает только на сервере.")
             return
+
+        # Discord invalidates an interaction if it is not acknowledged quickly enough.
+        # Core Red commands may take longer than that, so acknowledge immediately
+        # and send any wrapper response through a follow-up afterwards.
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
 
         app_ctx = await commands.Context.from_interaction(interaction)
         prefixes = await self.bot.get_valid_prefixes(interaction.guild)
