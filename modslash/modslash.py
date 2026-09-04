@@ -25,7 +25,7 @@ DURATION_PRESETS = (
     ("3 days", "3d"),
     ("7 days", "7d"),
     ("14 days", "14d"),
-    ("30 days", "30d"),
+    ("28 days", "28d"),
 )
 
 
