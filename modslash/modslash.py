@@ -536,7 +536,7 @@ class ModSlash(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        duration: str,
+        duration: Optional[str] = None,
         delete_days: Optional[app_commands.Range[int, 0, 7]] = None,
         reason: Optional[str] = None,
     ) -> None:
