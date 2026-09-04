@@ -1,0 +1,25 @@
+{
+  "author": [
+    "neuropolimer"
+  ],
+  "description": "Slash-интерфейс поверх уже настроенной модерации Red. Дублирует прямые команды Warnings, Mutes, Mod, ModLog и Reports, сохраняет исходные проверки прав и ModLog. Cleanup намеренно не включён.",
+  "install_msg": "ModSlash установлен. Загрузите cog командой \`[p]load modslash\`, затем включите его application-команды через \`[p]slash enablecog ModSlash\` и выполните \`[p]slash sync\`.",
+  "short": "Slash-команды и русские псевдонимы для существующей модерации Red.",
+  "end_user_data_statement": "Cog не хранит пользовательские данные. Он только передаёт slash-вызовы существующим командам Red.",
+  "min_bot_version": "3.5.0",
+  "max_bot_version": "3.5.99",
+  "min_python_version": [
+    3,
+    11,
+    0
+  ],
+  "requirements": [],
+  "tags": [
+    "moderation",
+    "slash",
+    "utility"
+  ],
+  "hidden": false,
+  "disabled": false,
+  "type": "COG"
+}
