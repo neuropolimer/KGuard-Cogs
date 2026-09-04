@@ -5,7 +5,7 @@ from typing import Optional
 
 import discord
 
-from redbot.core import app_commands, commands
+from redbot.core import app_commands, commands, modlog
 from redbot.core.bot import Red
 
 
@@ -58,7 +58,7 @@ async def duration_autocomplete(
 class ModSlash(commands.Cog):
     """Slash interface for the moderation commands already configured in Red."""
 
-    __version__ = "1.0.3"
+    __version__ = "1.1.0"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -74,13 +74,22 @@ class ModSlash(commands.Cog):
                 result.append(value)
         return " ".join(result)
 
+    async def _mod_defaults(self, guild: discord.Guild) -> tuple[int, int]:
+        """Return Red Mod's default delete-days and tempban duration in seconds."""
+        mod_cog = self.bot.get_cog("Mod")
+        config = getattr(mod_cog, "config", None)
+        if config is None:
+            return 0, 86400
+        data = await config.guild(guild).all()
+        return int(data.get("default_days", 0)), int(data.get("default_tempban_duration", 86400))
+
     @staticmethod
     async def _respond(
         interaction: discord.Interaction, message: str, *, ephemeral: bool = True
     ) -> None:
+        # Wrapper diagnostics should never spill into the moderation channel.
+        # Once the interaction has been acknowledged, native Red output is enough.
         if interaction.response.is_done():
-            if interaction.channel is not None:
-                await interaction.channel.send(message)
             return
         await interaction.response.send_message(message, ephemeral=ephemeral)
 
@@ -88,12 +97,6 @@ class ModSlash(commands.Cog):
         if interaction.guild is None or interaction.channel is None:
             await self._respond(interaction, "Эта команда работает только на сервере.")
             return
-
-        # Acknowledge immediately so Discord does not expire the interaction.
-        # We intentionally avoid follow-up webhooks afterwards: wrapped Red commands
-        # answer as normal channel messages, which is more reliable on some hosts.
-        if not interaction.response.is_done():
-            await interaction.response.send_message("Команда передана Red.", ephemeral=True)
 
         app_ctx = await commands.Context.from_interaction(interaction)
         prefixes = await self.bot.get_valid_prefixes(interaction.guild)
@@ -107,8 +110,7 @@ class ModSlash(commands.Cog):
         legacy_ctx = await self.bot.get_context(fake_message)
 
         # Do not attach the slash interaction to the synthetic prefix context.
-        # Red's Context.send() would then route through interaction.followup,
-        # which is unnecessary here and can hit Discord/Cloudflare webhook limits.
+        # Native Red replies should be ordinary channel messages, not webhook follow-ups.
         legacy_ctx.interaction = None
 
         if legacy_ctx.command is None:
@@ -135,12 +137,14 @@ class ModSlash(commands.Cog):
             )
             return
 
-        await self.bot.invoke(legacy_ctx)
+        # Acknowledge only after all wrapper-side checks passed. This keeps
+        # permission/configuration errors private while still beating Discord's timeout.
+        if not interaction.response.is_done():
+            await interaction.response.send_message("Выполняю…", ephemeral=True)
 
-        if legacy_ctx.command_failed and interaction.channel is not None:
-            await interaction.channel.send(
-                "Red не смог выполнить команду. Проверь аргументы или права."
-            )
+        # bot.invoke preserves the original Red command parser, checks, hooks,
+        # cooldowns, Permissions rules, ModLog behavior and error handling.
+        await self.bot.invoke(legacy_ctx)
 
     # ---------- Warnings ----------
 
@@ -393,6 +397,11 @@ class ModSlash(commands.Cog):
         delete_days: Optional[int],
         reason: Optional[str],
     ) -> None:
+        if interaction.guild is None:
+            await self._respond(interaction, "Эта команда работает только на сервере.")
+            return
+        if delete_days is None:
+            delete_days, _ = await self._mod_defaults(interaction.guild)
         await self._run_legacy(
             interaction, self._line("ban", user.id, delete_days, reason)
         )
@@ -453,6 +462,11 @@ class ModSlash(commands.Cog):
         delete_days: Optional[app_commands.Range[int, 0, 7]] = None,
         reason: Optional[str] = None,
     ) -> None:
+        if interaction.guild is None:
+            await self._respond(interaction, "Эта команда работает только на сервере.")
+            return
+        if delete_days is None:
+            delete_days, _ = await self._mod_defaults(interaction.guild)
         await self._run_legacy(
             interaction, self._line("massban", user_ids, delete_days, reason)
         )
@@ -483,10 +497,18 @@ class ModSlash(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        duration: str,
+        duration: Optional[str],
         delete_days: Optional[int],
         reason: Optional[str],
     ) -> None:
+        if interaction.guild is None:
+            await self._respond(interaction, "Эта команда работает только на сервере.")
+            return
+        default_days, default_duration = await self._mod_defaults(interaction.guild)
+        if duration is None:
+            duration = f"{default_duration}s"
+        if delete_days is None:
+            delete_days = default_days
         await self._run_legacy(
             interaction,
             self._line("tempban", member.id, duration, delete_days, reason),
@@ -500,7 +522,7 @@ class ModSlash(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        duration: str,
+        duration: Optional[str] = None,
         delete_days: Optional[app_commands.Range[int, 0, 7]] = None,
         reason: Optional[str] = None,
     ) -> None:
@@ -521,7 +543,7 @@ class ModSlash(commands.Cog):
         await self._do_tempban(interaction, member, duration, delete_days, reason)
 
     @app_commands.command(name="unban", description="Unban a user using the Red Mod cog.", extras={"red_force_enable": True})
-    @app_commands.describe(user="User ID or exact Discord name", reason="Reason")
+    @app_commands.describe(user="Discord user ID", reason="Reason")
     @app_commands.guild_only()
     async def unban(
         self,
@@ -532,7 +554,7 @@ class ModSlash(commands.Cog):
         await self._run_legacy(interaction, self._line("unban", user, reason))
 
     @app_commands.command(name="разбан", description="Разбанить пользователя через Red Mod.", extras={"red_force_enable": True})
-    @app_commands.rename(user="пользователь", reason="причина")
+    @app_commands.rename(user="id_пользователя", reason="причина")
     @app_commands.guild_only()
     async def unban_ru(
         self,
@@ -680,6 +702,15 @@ class ModSlash(commands.Cog):
         reason: str,
         case: Optional[int] = None,
     ) -> None:
+        if interaction.guild is None:
+            await self._respond(interaction, "Эта команда работает только на сервере.")
+            return
+        if case is None:
+            latest = await modlog.get_latest_case(interaction.guild, self.bot)
+            if latest is None:
+                await self._respond(interaction, "На сервере пока нет кейсов ModLog.")
+                return
+            case = latest.case_number
         await self._run_legacy(interaction, self._line("reason", case, reason))
 
     # ---------- Reports ----------
