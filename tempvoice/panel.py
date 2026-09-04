@@ -327,7 +327,7 @@ class TempVoicePanel(commands.Cog):
     """Кнопочная панель управления для TempVoice."""
 
     __author__ = "neuropolimer"
-    __version__ = "1.0.0"
+    __version__ = "1.1.0"
 
     def __init__(self, bot: Red):
         self.bot = bot
