@@ -2,7 +2,7 @@
   "author": [
     "neuropolimer"
   ],
-  "description": "Приватный репозиторий сторонних cog'ов KGuard для Red-DiscordBot 3.5.x.",
-  "install_msg": "Репозиторий KGuard-Cogs добавлен. Посмотреть доступные cog'и: `[p]cog list KGuard-Cogs`.",
-  "short": "Сторонние cog'и KGuard для Red-DiscordBot."
+  "description": "Cog'и KGuard для Red-DiscordBot.",
+  "install_msg": "KGuard-Cogs добавлен. Список доступных cog'ов: `[p]cog list KGuard-Cogs`.",
+  "short": "Дополнительные cog'и для KGuard."
 }
