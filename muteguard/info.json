@@ -1,0 +1,25 @@
+{
+  "author": [
+    "neuropolimer"
+  ],
+  "description": "Усиление ролевого мута Red: персональные запреты на отправку сообщений, ветки, реакции, голос, видео, активности и историю сообщений без выдачи View Channel. Сохраняет и восстанавливает прежние member overwrites.",
+  "install_msg": "MuteGuard установлен. Загрузите cog командой `[p]load muteguard`, затем укажите ту же роль, что используется в Mutes: `[p]muteguardset role @Заглушка`.",
+  "short": "Безопасные персональные ограничения для роли-заглушки.",
+  "end_user_data_statement": "Cog хранит Discord ID роли заглушки и участников, а также снимки изменённых полей персональных permission overwrites, чтобы восстановить их после снятия мута. Содержимое сообщений не сохраняется.",
+  "min_bot_version": "3.5.0",
+  "max_bot_version": "3.5.99",
+  "min_python_version": [
+    3,
+    11,
+    0
+  ],
+  "requirements": [],
+  "tags": [
+    "moderation",
+    "mute",
+    "permissions"
+  ],
+  "hidden": false,
+  "disabled": false,
+  "type": "COG"
+}
