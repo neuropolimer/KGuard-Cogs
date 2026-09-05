@@ -118,9 +118,13 @@ class CasesCaseSelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        case_number = int(self.values[0])
+        case_number = self.values[0]
         case = next(
-            (case for case in self.cases_view.cases if case.case_number == case_number),
+            (
+                case
+                for case in self.cases_view.cases
+                if str(case.case_number) == str(case_number)
+            ),
             None,
         )
         if case is None:
@@ -222,7 +226,7 @@ class CasesDropdownView(discord.ui.View):
 class ModSlash(commands.Cog):
     """Slash interface for the moderation commands already configured in Red."""
 
-    __version__ = "1.2.0"
+    __version__ = "1.2.1"
 
     def __init__(self, bot: Red):
         self.bot = bot
