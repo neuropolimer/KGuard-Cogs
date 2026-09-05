@@ -9,8 +9,9 @@ from redbot.core.bot import Red
 
 log = logging.getLogger("red.neuropolimer.muteguard")
 
-# Intentionally excludes view_channel/read_messages.
-# The cog must never grant access to a channel/category.
+# Intentionally excludes view_channel/read_messages and read_message_history.
+# The cog must never grant access to a channel/category and should leave
+# message history exactly as it was before the mute.
 COMMUNICATION_DENIES = (
     "send_messages",
     "send_tts_messages",
@@ -36,7 +37,6 @@ COMMUNICATION_DENIES = (
     "use_soundboard",
     "use_external_sounds",
     "use_embedded_activities",
-    "read_message_history",
     # Prevent common channel-level escape hatches while muted.
     "manage_channels",
     "manage_roles",
@@ -54,12 +54,18 @@ OPTIONAL_DENIES = (
     "send_scheduled_messages",
 )
 
+# Fields denied by older MuteGuard versions but no longer part of the mute.
+# They are restored from the saved snapshot during migration.
+RETIRED_DENIES = (
+    "read_message_history",
+)
+
 
 class MuteGuard(commands.Cog):
     """Hardens a role-based Red mute with per-member channel overwrites."""
 
     __author__ = "neuropolimer"
-    __version__ = "1.0.0"
+    __version__ = "1.0.1"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -81,6 +87,10 @@ class MuteGuard(commands.Cog):
             for name in (*COMMUNICATION_DENIES, *OPTIONAL_DENIES)
             if name in valid_flags
         )
+        self._retired_fields = tuple(
+            name for name in RETIRED_DENIES if name in valid_flags
+        )
+        self._restorable_fields = set((*self._deny_fields, *self._retired_fields))
 
     async def cog_load(self) -> None:
         all_guilds = await self.config.all_guilds()
@@ -135,6 +145,65 @@ class MuteGuard(commands.Cog):
                 if channel.id not in seen:
                     seen.add(channel.id)
                     yield channel
+
+    async def _restore_retired_fields(
+        self,
+        member: discord.Member,
+        channel: discord.abc.GuildChannel,
+        snapshots: Dict[str, Dict[str, Any]],
+    ) -> bool:
+        """Restore fields that older MuteGuard versions used to deny."""
+        channel_key = str(channel.id)
+        fields = dict(snapshots.get(channel_key, {}))
+        retired = {
+            field: fields[field]
+            for field in self._retired_fields
+            if field in fields
+        }
+        if not retired:
+            return False
+
+        overwrite = channel.overwrites_for(member)
+        changed = False
+
+        for field, original in retired.items():
+            # Restore only if our old deny is still present. If an admin or
+            # another cog changed it meanwhile, preserve that newer value.
+            if getattr(overwrite, field) is False:
+                setattr(overwrite, field, original)
+                changed = True
+            fields.pop(field, None)
+
+        if changed:
+            try:
+                await channel.set_permissions(
+                    member,
+                    overwrite=None if overwrite.is_empty() else overwrite,
+                    reason=(
+                        f"MuteGuard: migrate retired mute permissions for "
+                        f"{member} ({member.id})"
+                    ),
+                )
+            except discord.Forbidden:
+                log.warning(
+                    "MuteGuard cannot migrate overwrite in channel %s for member %s",
+                    channel.id,
+                    member.id,
+                )
+                return False
+            except discord.HTTPException:
+                log.exception(
+                    "MuteGuard migration failed in channel %s for member %s",
+                    channel.id,
+                    member.id,
+                )
+                return False
+
+        if fields:
+            snapshots[channel_key] = fields
+        else:
+            snapshots.pop(channel_key, None)
+        return True
 
     async def _set_channel_overlay(
         self,
@@ -200,6 +269,12 @@ class MuteGuard(commands.Cog):
             snapshots = await self.config.member(member).overrides()
             dirty = False
 
+            # Migrate old snapshots first so users muted before v1.0.1 regain
+            # their previous Read Message History setting immediately.
+            for channel in self._candidate_channels(member.guild, snapshots):
+                if await self._restore_retired_fields(member, channel, snapshots):
+                    dirty = True
+
             for channel in self._candidate_channels(member.guild, snapshots):
                 if await self._set_channel_overlay(member, channel, snapshots):
                     dirty = True
@@ -259,7 +334,7 @@ class MuteGuard(commands.Cog):
                 changed = False
 
                 for field, original in fields.items():
-                    if field not in self._deny_fields:
+                    if field not in self._restorable_fields:
                         continue
 
                     # Only undo our overlay. If something else changed the field away
@@ -480,7 +555,7 @@ class MuteGuard(commands.Cog):
             f"Роль: {role.mention}\n"
             f"Сейчас с заглушкой: {muted_count}\n"
             f"Запрещаемых полей: {len(self._deny_fields)}\n"
-            "`Просмотр канала` cog не изменяет."
+            "`Просмотр канала` и `Историю сообщений` cog не изменяет."
         )
         if admin_bypass:
             text += (
