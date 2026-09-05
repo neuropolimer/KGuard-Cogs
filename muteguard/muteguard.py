@@ -65,7 +65,7 @@ class MuteGuard(commands.Cog):
     """Hardens a role-based Red mute with per-member channel overwrites."""
 
     __author__ = "neuropolimer"
-    __version__ = "1.0.1"
+    __version__ = "1.1.0"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -74,10 +74,11 @@ class MuteGuard(commands.Cog):
             identifier=602451496302871118,
             force_registration=True,
         )
-        self.config.register_guild(mute_role_id=0)
+        self.config.register_guild(mute_role_id=0, exempt_category_ids=[])
         self.config.register_member(overrides={})
 
         self._mute_roles: Dict[int, int] = {}
+        self._exempt_categories: Dict[int, set[int]] = {}
         self._member_locks: Dict[tuple[int, int], asyncio.Lock] = defaultdict(asyncio.Lock)
         self._ready_task: Optional[asyncio.Task] = None
 
@@ -96,6 +97,13 @@ class MuteGuard(commands.Cog):
         all_guilds = await self.config.all_guilds()
         self._mute_roles = {
             int(guild_id): int(data.get("mute_role_id", 0) or 0)
+            for guild_id, data in all_guilds.items()
+        }
+        self._exempt_categories = {
+            int(guild_id): {
+                int(category_id)
+                for category_id in data.get("exempt_category_ids", [])
+            }
             for guild_id, data in all_guilds.items()
         }
         self._ready_task = asyncio.create_task(self._initialize_after_ready())
@@ -121,6 +129,13 @@ class MuteGuard(commands.Cog):
     def _has_mute_role(self, member: discord.Member) -> bool:
         role_id = self._mute_role_id(member.guild)
         return bool(role_id and any(role.id == role_id for role in member.roles))
+
+    def _is_exempt_channel(self, channel: discord.abc.GuildChannel) -> bool:
+        exempt_ids = self._exempt_categories.get(channel.guild.id, set())
+        if isinstance(channel, discord.CategoryChannel):
+            return channel.id in exempt_ids
+        category = getattr(channel, "category", None)
+        return category is not None and category.id in exempt_ids
 
     @staticmethod
     def _is_permission_root(channel: discord.abc.GuildChannel) -> bool:
@@ -205,6 +220,56 @@ class MuteGuard(commands.Cog):
             snapshots.pop(channel_key, None)
         return True
 
+    async def _restore_channel_snapshot(
+        self,
+        member: discord.Member,
+        channel: discord.abc.GuildChannel,
+        snapshots: Dict[str, Dict[str, Any]],
+    ) -> bool:
+        """Restore MuteGuard-managed fields for one channel and forget its snapshot."""
+        channel_key = str(channel.id)
+        fields = dict(snapshots.get(channel_key, {}))
+        if not fields:
+            return False
+
+        overwrite = channel.overwrites_for(member)
+        changed = False
+
+        for field, original in fields.items():
+            if field not in self._restorable_fields:
+                continue
+            if getattr(overwrite, field) is False:
+                setattr(overwrite, field, original)
+                changed = True
+
+        if changed:
+            try:
+                await channel.set_permissions(
+                    member,
+                    overwrite=None if overwrite.is_empty() else overwrite,
+                    reason=(
+                        f"MuteGuard: restore exempt category permissions for "
+                        f"{member} ({member.id})"
+                    ),
+                )
+            except discord.Forbidden:
+                log.warning(
+                    "MuteGuard cannot restore exempt overwrite in channel %s for member %s",
+                    channel.id,
+                    member.id,
+                )
+                return False
+            except discord.HTTPException:
+                log.exception(
+                    "MuteGuard failed restoring exempt overwrite in channel %s for member %s",
+                    channel.id,
+                    member.id,
+                )
+                return False
+
+        snapshots.pop(channel_key, None)
+        return True
+
     async def _set_channel_overlay(
         self,
         member: discord.Member,
@@ -276,6 +341,11 @@ class MuteGuard(commands.Cog):
                     dirty = True
 
             for channel in self._candidate_channels(member.guild, snapshots):
+                if self._is_exempt_channel(channel):
+                    if await self._restore_channel_snapshot(member, channel, snapshots):
+                        dirty = True
+                    continue
+
                 if await self._set_channel_overlay(member, channel, snapshots):
                     dirty = True
 
@@ -287,6 +357,9 @@ class MuteGuard(commands.Cog):
     async def _disconnect_if_needed(self, member: discord.Member) -> None:
         voice = member.voice
         if voice is None or voice.channel is None:
+            return
+
+        if self._is_exempt_channel(voice.channel):
             return
 
         me = member.guild.me
@@ -384,6 +457,17 @@ class MuteGuard(commands.Cog):
     async def _reconcile_guild(self, guild: discord.Guild) -> None:
         role_id = self._mute_role_id(guild)
         role = guild.get_role(role_id) if role_id else None
+
+        # Remove stale/deleted category IDs from config.
+        raw_exempt_ids = self._exempt_categories.get(guild.id, set())
+        valid_exempt_ids = {
+            category_id
+            for category_id in raw_exempt_ids
+            if isinstance(guild.get_channel(category_id), discord.CategoryChannel)
+        }
+        if valid_exempt_ids != raw_exempt_ids:
+            self._exempt_categories[guild.id] = valid_exempt_ids
+            await self.config.guild(guild).exempt_category_ids.set(sorted(valid_exempt_ids))
 
         # First restore stale overlays from members who are not currently muted.
         all_members = await self.config.all_members(guild)
@@ -530,6 +614,86 @@ class MuteGuard(commands.Cog):
             + suffix
         )
 
+    @muteguardset.command(name="allowcategory")
+    async def muteguardset_allowcategory(
+        self,
+        ctx: commands.Context,
+        category: discord.CategoryChannel,
+    ) -> None:
+        """Разрешить общение заглушенным участникам в категории."""
+        guild = ctx.guild
+        if guild is None:
+            return
+
+        exempt_ids = set(self._exempt_categories.get(guild.id, set()))
+        if category.id in exempt_ids:
+            await ctx.send(f"Категория **{category.name}** уже находится в исключениях MuteGuard.")
+            return
+
+        exempt_ids.add(category.id)
+        self._exempt_categories[guild.id] = exempt_ids
+        await self.config.guild(guild).exempt_category_ids.set(sorted(exempt_ids))
+
+        await self._reconcile_muted_members(guild)
+        await ctx.send(
+            f"Категория **{category.name}** добавлена в исключения. "
+            "MuteGuard не будет ограничивать в ней заглушенных участников и не будет "
+            "выдавать им никаких дополнительных прав доступа."
+        )
+
+    @muteguardset.command(name="denycategory")
+    async def muteguardset_denycategory(
+        self,
+        ctx: commands.Context,
+        category: discord.CategoryChannel,
+    ) -> None:
+        """Вернуть обычные ограничения MuteGuard для категории."""
+        guild = ctx.guild
+        if guild is None:
+            return
+
+        exempt_ids = set(self._exempt_categories.get(guild.id, set()))
+        if category.id not in exempt_ids:
+            await ctx.send(f"Категория **{category.name}** не находится в исключениях MuteGuard.")
+            return
+
+        exempt_ids.remove(category.id)
+        self._exempt_categories[guild.id] = exempt_ids
+        await self.config.guild(guild).exempt_category_ids.set(sorted(exempt_ids))
+
+        await self._reconcile_muted_members(guild)
+        await ctx.send(
+            f"Категория **{category.name}** удалена из исключений. "
+            "Обычные ограничения MuteGuard снова применены."
+        )
+
+    @muteguardset.command(name="categories")
+    async def muteguardset_categories(self, ctx: commands.Context) -> None:
+        """Показать категории, в которых MuteGuard не ограничивает общение."""
+        guild = ctx.guild
+        if guild is None:
+            return
+
+        exempt_ids = set(self._exempt_categories.get(guild.id, set()))
+        categories = [
+            guild.get_channel(category_id)
+            for category_id in sorted(exempt_ids)
+        ]
+        categories = [
+            category
+            for category in categories
+            if isinstance(category, discord.CategoryChannel)
+        ]
+
+        if not categories:
+            await ctx.send("Категорий-исключений нет.")
+            return
+
+        await ctx.send(
+            "**Категории-исключения MuteGuard:**\n"
+            + "\n".join(f"• **{category.name}** (`{category.id}`)" for category in categories)
+        )
+
     @muteguardset.command(name="status")
     async def muteguardset_status(self, ctx: commands.Context) -> None:
         """Показать текущую роль и состояние MuteGuard."""
@@ -555,6 +719,7 @@ class MuteGuard(commands.Cog):
             f"Роль: {role.mention}\n"
             f"Сейчас с заглушкой: {muted_count}\n"
             f"Запрещаемых полей: {len(self._deny_fields)}\n"
+            f"Категорий-исключений: {len(self._exempt_categories.get(guild.id, set()))}\n"
             "`Просмотр канала` и `Историю сообщений` cog не изменяет."
         )
         if admin_bypass:
