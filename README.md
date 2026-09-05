@@ -26,7 +26,7 @@
 - Warnings: `/warn`, `/warnings`, `/warns`, `/unwarn`, `/warningsid`, `/unwarnid`;
 - Mutes: `/mute`, `/unmute`, `/timeout`, `/activemutes`, `/mutechannel`, `/unmutechannel`, `/voicemute`, `/voiceunmute`;
 - Mod: `/ban`, `/banid`, `/unban`, `/tempban`, `/tempbanid`, `/kick`, `/massban`, `/softban`, `/voiceban`, `/voicekick`, `/voiceunban`, `/rename`, `/names`, `/userinfo`, `/slowmode`;
-- ModLog: `/case`, `/casesfor`, `/cases`, `/casesid`, `/listcases`, `/listcasesid`, `/reason`;
+- ModLog: `/case`, `/casesfor`, `/cases`, `/casesid`, `/listcases`, `/listcasesid`, `/reason`. `/cases`, `/кейсы` и `/casesid` открывают историю через выпадающий список;
 - Reports: `/report`, `/report-interact`.
 
 Русские псевдонимы для часто используемых команд:
@@ -36,6 +36,10 @@
 `cleanup`, `clear` и `purge` намеренно не добавлены.
 
 Команды с суффиксом `id` нужны для случаев, когда пользователя уже нельзя выбрать через Discord-пикер — например, он вышел с сервера.
+
+### История через /cases
+
+`/cases` и `/кейсы` показывают последний case и нативный Discord dropdown `Выбрать case…`. В списке видно номер, тип, дату и начало причины. Если case'ов больше 25, появляется отдельный dropdown для выбора страницы истории. `/casesfor` оставлен как штатный вариант Red с его стандартной пагинацией.
 
 ### Срок наказания
 
