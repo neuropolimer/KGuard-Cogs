@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
+from datetime import datetime, timezone
 from typing import Optional
 
 import discord
@@ -55,10 +56,173 @@ async def duration_autocomplete(
     return choices[:25]
 
 
+class CasesPageSelect(discord.ui.Select):
+    def __init__(self, view: "CasesDropdownView"):
+        self.cases_view = view
+        options = []
+        for page in range(view.page_count):
+            start = page * view.PAGE_SIZE + 1
+            end = min((page + 1) * view.PAGE_SIZE, len(view.cases))
+            options.append(
+                discord.SelectOption(
+                    label=f"Cases {start}–{end}",
+                    value=str(page),
+                    default=page == view.page,
+                )
+            )
+
+        super().__init__(
+            placeholder="Страница истории",
+            min_values=1,
+            max_values=1,
+            options=options[:25],
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        page = int(self.values[0])
+        await self.cases_view.set_page(interaction, page)
+
+
+class CasesCaseSelect(discord.ui.Select):
+    def __init__(self, view: "CasesDropdownView"):
+        self.cases_view = view
+        start = view.page * view.PAGE_SIZE
+        page_cases = view.cases[start : start + view.PAGE_SIZE]
+
+        options = []
+        for case in page_cases:
+            created_at = datetime.fromtimestamp(case.created_at, tz=timezone.utc)
+            action = str(getattr(case, "action_type", "case"))
+            label = f"#{case.case_number} · {action} · {created_at:%d.%m.%Y}"
+
+            reason = (getattr(case, "reason", None) or "Без причины").strip()
+            # The first line is enough for a compact preview and, for warning
+            # cases, avoids surfacing Red's old trailing unwarn instruction.
+            reason_preview = reason.splitlines()[0].strip() or "Без причины"
+
+            options.append(
+                discord.SelectOption(
+                    label=label[:100],
+                    value=str(case.case_number),
+                    description=reason_preview[:100],
+                )
+            )
+
+        super().__init__(
+            placeholder="Выбрать case…",
+            min_values=1,
+            max_values=1,
+            options=options,
+            row=1 if view.page_count > 1 else 0,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        case_number = int(self.values[0])
+        case = next(
+            (case for case in self.cases_view.cases if case.case_number == case_number),
+            None,
+        )
+        if case is None:
+            await interaction.response.send_message(
+                "Этот case больше не найден.", ephemeral=True
+            )
+            return
+
+        await self.cases_view.show_case(interaction, case)
+
+
+class CasesDropdownView(discord.ui.View):
+    PAGE_SIZE = 25
+
+    def __init__(
+        self,
+        cog: "ModSlash",
+        cases: list,
+        requester_id: int,
+        subject_label: str,
+        *,
+        use_embed: bool,
+    ):
+        super().__init__(timeout=300)
+        self.cog = cog
+        # Newest cases first.
+        self.cases = sorted(cases, key=lambda case: case.case_number, reverse=True)
+        self.requester_id = requester_id
+        self.subject_label = subject_label
+        self.use_embed = use_embed
+        self.page = 0
+        self._rebuild_items()
+
+    @property
+    def page_count(self) -> int:
+        return max(1, (len(self.cases) + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
+
+    def _rebuild_items(self) -> None:
+        self.clear_items()
+        if self.page_count > 1:
+            self.add_item(CasesPageSelect(self))
+        self.add_item(CasesCaseSelect(self))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id == self.requester_id:
+            return True
+        await interaction.response.send_message(
+            "Эту историю открыл другой пользователь.", ephemeral=True
+        )
+        return False
+
+    async def _render(self, case):
+        return await case.message_content(embed=self.use_embed)
+
+    async def show_case(self, interaction: discord.Interaction, case) -> None:
+        rendered = await self._render(case)
+        content = (
+            f"**История ModLog: {self.subject_label}** · "
+            f"case'ов: **{len(self.cases)}**"
+        )
+        if self.use_embed:
+            await interaction.response.edit_message(
+                content=content,
+                embed=rendered,
+                view=self,
+            )
+        else:
+            await interaction.response.edit_message(
+                content=f"{content}\n\n{rendered}",
+                embed=None,
+                view=self,
+            )
+
+    async def set_page(self, interaction: discord.Interaction, page: int) -> None:
+        self.page = max(0, min(page, self.page_count - 1))
+        self._rebuild_items()
+
+        start = self.page * self.PAGE_SIZE
+        case = self.cases[start]
+        rendered = await self._render(case)
+        content = (
+            f"**История ModLog: {self.subject_label}** · "
+            f"case'ов: **{len(self.cases)}**"
+        )
+        if self.use_embed:
+            await interaction.response.edit_message(
+                content=content,
+                embed=rendered,
+                view=self,
+            )
+        else:
+            await interaction.response.edit_message(
+                content=f"{content}\n\n{rendered}",
+                embed=None,
+                view=self,
+            )
+
+
 class ModSlash(commands.Cog):
     """Slash interface for the moderation commands already configured in Red."""
 
-    __version__ = "1.1.0"
+    __version__ = "1.2.0"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -719,6 +883,82 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("voiceunban", member.id, reason))
 
+    async def _show_cases_dropdown(
+        self,
+        interaction: discord.Interaction,
+        *,
+        member: Optional[discord.Member] = None,
+        user_id: Optional[int] = None,
+    ) -> None:
+        if interaction.guild is None or interaction.channel is None:
+            await self._respond(interaction, "Эта команда работает только на сервере.")
+            return
+
+        try:
+            if member is not None:
+                cases = await modlog.get_cases_for_member(
+                    bot=self.bot,
+                    guild=interaction.guild,
+                    member=member,
+                )
+                subject_label = member.mention
+            elif user_id is not None:
+                cases = await modlog.get_cases_for_member(
+                    bot=self.bot,
+                    guild=interaction.guild,
+                    member_id=user_id,
+                )
+                subject_label = f"`{user_id}`"
+            else:
+                await self._respond(interaction, "Не указан пользователь.")
+                return
+        except discord.NotFound:
+            await self._respond(interaction, "Пользователь не найден.")
+            return
+        except discord.HTTPException:
+            await self._respond(
+                interaction,
+                "Discord не дал получить историю этого пользователя.",
+            )
+            return
+
+        if not cases:
+            await self._respond(interaction, "У этого пользователя нет case'ов.")
+            return
+
+        me = interaction.guild.me
+        use_embed = bool(
+            me is not None
+            and hasattr(interaction.channel, "permissions_for")
+            and interaction.channel.permissions_for(me).embed_links
+        )
+
+        view = CasesDropdownView(
+            self,
+            cases,
+            interaction.user.id,
+            subject_label,
+            use_embed=use_embed,
+        )
+        first_case = view.cases[0]
+        rendered = await first_case.message_content(embed=use_embed)
+        content = (
+            f"**История ModLog: {subject_label}** · "
+            f"case'ов: **{len(view.cases)}**"
+        )
+
+        if use_embed:
+            await interaction.response.send_message(
+                content=content,
+                embed=rendered,
+                view=view,
+            )
+        else:
+            await interaction.response.send_message(
+                content=f"{content}\n\n{rendered}",
+                view=view,
+            )
+
     # ---------- ModLog ----------
 
     async def _do_case(self, interaction: discord.Interaction, number: int) -> None:
@@ -749,23 +989,23 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_casesfor(interaction, member)
 
-    @app_commands.command(name="cases", description="Alias for /casesfor.", extras={"red_force_enable": True})
+    @app_commands.command(name="cases", description="Show ModLog history in a dropdown.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member")
     @app_commands.guild_only()
     async def cases_alias(
         self, interaction: discord.Interaction, member: discord.Member
     ) -> None:
-        await self._do_casesfor(interaction, member)
+        await self._show_cases_dropdown(interaction, member=member)
 
-    @app_commands.command(name="кейсы", description="Показать кейсы участника.", extras={"red_force_enable": True})
+    @app_commands.command(name="кейсы", description="Показать историю ModLog через выпадающий список.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник")
     @app_commands.guild_only()
     async def cases_ru(
         self, interaction: discord.Interaction, member: discord.Member
     ) -> None:
-        await self._do_casesfor(interaction, member)
+        await self._show_cases_dropdown(interaction, member=member)
 
-    @app_commands.command(name="casesid", description="Show ModLog cases for a user by Discord ID.", extras={"red_force_enable": True})
+    @app_commands.command(name="casesid", description="Show ModLog history by user ID in a dropdown.", extras={"red_force_enable": True})
     @app_commands.describe(user_id="Discord user ID")
     @app_commands.guild_only()
     async def casesid(
@@ -774,7 +1014,7 @@ class ModSlash(commands.Cog):
         user_id = await self._validated_user_id(interaction, user_id)
         if user_id is None:
             return
-        await self._run_legacy(interaction, self._line("casesfor", user_id))
+        await self._show_cases_dropdown(interaction, user_id=int(user_id))
 
     @app_commands.command(name="listcases", description="List ModLog cases for a member.", extras={"red_force_enable": True})
     @app_commands.describe(member="Member")
