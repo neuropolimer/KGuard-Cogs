@@ -378,7 +378,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("warnings", member.id))
 
-    @app_commands.command(name="warnings", description="Show a member's Red warnings.", extras={"red_force_enable": True})
+    @app_commands.command(name="warnings", description="Показать предупреждения участника из Red Warnings.", extras={"red_force_enable": True})
     @app_commands.describe(member="Участник")
     @app_commands.guild_only()
     async def warnings(
@@ -527,7 +527,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._do_timed_member_command(interaction, "timeout", member, duration, reason)
 
-    @app_commands.command(name="таймаут", description="Выдать timeout через Red Mutes.", extras={"red_force_enable": True})
+    @app_commands.command(name="таймаут", description="Выдать таймаут через Red Mutes.", extras={"red_force_enable": True})
     @app_commands.rename(member="участник", duration="срок", reason="причина")
     @app_commands.autocomplete(duration=duration_autocomplete)
     @app_commands.guild_only()
@@ -812,7 +812,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("unban", user, reason))
 
-    @app_commands.command(name="names", description="Show a member's stored previous names.", extras={"red_force_enable": True})
+    @app_commands.command(name="names", description="Показать сохранённую историю имён участника.", extras={"red_force_enable": True})
     @app_commands.describe(member="Участник")
     @app_commands.guild_only()
     async def names(
@@ -820,7 +820,7 @@ class ModSlash(commands.Cog):
     ) -> None:
         await self._run_legacy(interaction, self._line("names", member.id))
 
-    @app_commands.command(name="rename", description="Change or clear a member's nickname.", extras={"red_force_enable": True})
+    @app_commands.command(name="rename", description="Изменить или сбросить ник участника на сервере.", extras={"red_force_enable": True})
     @app_commands.describe(member="Участник", nickname="Новый ник; оставь пустым, чтобы сбросить")
     @app_commands.guild_only()
     async def rename(
@@ -1067,7 +1067,7 @@ class ModSlash(commands.Cog):
         await self._run_legacy(interaction, self._line("report", text))
 
     @app_commands.command(name="report", description="Отправить жалобу через Red Reports.", extras={"red_force_enable": True})
-    @app_commands.describe(text="Report text; leave empty for Red's interactive mode")
+    @app_commands.describe(text="Текст жалобы; оставь пустым для интерактивного режима")
     @app_commands.guild_only()
     async def report(
         self,
